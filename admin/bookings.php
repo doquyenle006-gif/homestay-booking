@@ -57,6 +57,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $stmt_delete = $conn->prepare("DELETE FROM bookings WHERE id = ?");
     $stmt_delete->bind_param("i", $id);
     if ($stmt_delete->execute()) {
+
         $_SESSION['message'] = "Xóa đặt phòng thành công!";
     } else {
         $_SESSION['error_message'] = "Lỗi khi xóa đặt phòng!";
@@ -71,6 +72,73 @@ if (isset($_POST['update_booking'])) {
     $checkin = $_POST['checkin'];
     $checkout = $_POST['checkout'];
     $status = $_POST['status'];
+
+    $errors = []; // Initialize errors array for this context
+
+    // Validate dates
+    if (empty($checkin) || empty($checkout)) {
+        $errors[] = "Ngày nhận phòng và ngày trả phòng không được để trống.";
+    } elseif (strtotime($checkin) >= strtotime($checkout)) {
+        $errors[] = "Ngày nhận phòng phải trước ngày trả phòng.";
+    } elseif (strtotime($checkin) < strtotime(date('Y-m-d')) && $status !== 'completed' && $status !== 'cancelled') {
+        // Allow past checkin dates for completed/cancelled bookings, but not for active ones
+        $errors[] = "Ngày nhận phòng không được là ngày trong quá khứ cho các đặt phòng đang hoạt động.";
+    }
+
+    if (!empty($errors)) {
+        $_SESSION['error_message'] = implode("<br>", $errors);
+        header("Location: bookings.php");
+        exit();
+    }
+
+    // First, get the room_id for this booking
+    $stmt_get_room_id = $conn->prepare("SELECT room_id FROM bookings WHERE id = ?");
+    $stmt_get_room_id->bind_param("i", $id);
+    $stmt_get_room_id->execute();
+    $room_id_data = $stmt_get_room_id->get_result()->fetch_assoc();
+    if (!$room_id_data) {
+        $_SESSION['error_message'] = "Không tìm thấy đặt phòng để cập nhật.";
+        header("Location: bookings.php");
+        exit();
+    }
+    $room_id = $room_id_data['room_id'];
+    $stmt_get_room_id->close();
+
+    // Get total quantity of the room
+    $stmt_get_room_quantity = $conn->prepare("SELECT quantity FROM rooms WHERE id = ?");
+    $stmt_get_room_quantity->bind_param("i", $room_id);
+    $stmt_get_room_quantity->execute();
+    $room_quantity_data = $stmt_get_room_quantity->get_result()->fetch_assoc();
+    if (!$room_quantity_data) {
+        $_SESSION['error_message'] = "Không tìm thấy thông tin phòng.";
+        header("Location: bookings.php");
+        exit();
+    }
+    $total_room_quantity = $room_quantity_data['quantity'];
+    $stmt_get_room_quantity->close();
+
+    // Check for overlapping bookings if the new status is 'pending' or 'confirmed'
+    if ($status === 'pending' || $status === 'confirmed') {
+        $stmt_overlap_check = $conn->prepare(
+            "SELECT COUNT(*) as overlapping_bookings
+             FROM bookings
+             WHERE room_id = ?
+             AND id != ? -- Exclude the current booking being updated
+             AND status IN ('pending', 'confirmed')
+             AND checkin < ? AND checkout > ?"
+        );
+        $stmt_overlap_check->bind_param("iiss", $room_id, $id, $checkout, $checkin);
+        $stmt_overlap_check->execute();
+        $overlap_result = $stmt_overlap_check->get_result()->fetch_assoc();
+        $current_booked_count = $overlap_result['overlapping_bookings'];
+        $stmt_overlap_check->close();
+
+        if (($current_booked_count + 1) > $total_room_quantity) {
+            $_SESSION['error_message'] = "Không thể cập nhật đặt phòng này. Phòng đã hết chỗ cho khoảng thời gian và trạng thái mới.";
+            header("Location: bookings.php");
+            exit();
+        }
+    }
 
     // Debug: Check if data is received
     error_log("Update booking: id=$id, checkin=$checkin, checkout=$checkout, status=$status");
@@ -118,7 +186,7 @@ if (!empty($search_keyword)) {
 $total_pages = ceil($total_records / $records_per_page);
 
 // Cập nhật câu lệnh SQL chính để lấy dữ liệu theo trang
-$sql = "SELECT b.id AS booking_id, c.name AS customer_name, c.phone, r.room_name, b.checkin, b.checkout, b.status
+$sql = "SELECT b.id AS booking_id, c.name AS customer_name, c.phone, r.room_name, r.price, b.checkin, b.checkout, b.status
         FROM bookings b
         JOIN customers c ON b.customer_id = c.id
         JOIN rooms r ON b.room_id = r.id";
@@ -218,6 +286,7 @@ function translate_status_to_vietnamese($status) {
                         <th>Ngày nhận phòng</th>
                         <th>Ngày trả phòng</th>
                         <th>Trạng thái</th>
+                        <th>Thanh toán</th>
                         <th>Hành động</th>
                     </tr>
                 </thead>
@@ -238,6 +307,23 @@ function translate_status_to_vietnamese($status) {
                                     </span>
                                 </td>
                                 <td>
+                                    <?php
+                                        // [THÊM] Tính toán tổng chi phí và tổng đã thanh toán cho mỗi đơn
+                                        // [THAY ĐỔI] Đơn giản hóa logic: chỉ cần kiểm tra sự tồn tại của thanh toán
+                                        $stmt_paid = $conn->prepare("SELECT id FROM payments WHERE booking_id = ? LIMIT 1");
+                                        $stmt_paid->bind_param("i", $row['booking_id']);
+                                        $stmt_paid->execute();
+                                        $payment_exists = $stmt_paid->get_result()->num_rows > 0;
+                                        $stmt_paid->close();
+                                    ?>
+                                    <?php if ($payment_exists): ?>
+                                        <span class="status-badge status-confirmed">Đã thanh toán</span>
+                                    <?php else: ?>
+                                        <span class="status-badge status-cancelled">Chưa thanh toán</span>
+                                    <?php endif; ?>
+                                    
+                                </td>
+                                <td>
                                     <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
                                         <!-- Nút Sửa -->
                                         <button type="button" class="icon-btn btn-edit-booking"
@@ -254,7 +340,7 @@ function translate_status_to_vietnamese($status) {
                         <?php
                         }
                     } else {
-                        echo '<tr><td colspan="8" class="text-center py-4">Không có đặt phòng nào.</td></tr>';
+                        echo '<tr><td colspan="9" class="text-center py-4">Không có đặt phòng nào.</td></tr>';
                     }
                     ?>
                 </tbody>
@@ -280,6 +366,43 @@ function translate_status_to_vietnamese($status) {
         </ul>
     </nav>
     <?php endif; ?>
+
+    <!-- [THÊM] Modal Thêm Thanh Toán -->
+    <div id="addPaymentModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Thêm thanh toán</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" action="add_payment.php" id="addPaymentForm">
+                        <input type="hidden" name="booking_id" id="payment_booking_id">
+                        <div class="mb-3">
+                            <label class="form-label">Số tiền</label>
+                            <input type="number" name="amount" id="payment_amount" class="form-control" required min="1000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phương thức thanh toán</label>
+                            <select name="payment_method" class="form-select">
+                                <option value="Tiền mặt">Tiền mặt</option>
+                                <option value="Chuyển khoản">Chuyển khoản</option>
+                                <option value="Thẻ tín dụng">Thẻ tín dụng</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ghi chú</label>
+                            <textarea name="notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" form="addPaymentForm" class="btn btn-primary">Lưu thanh toán</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Edit Modal -->
     <div id="editBookingModal" class="modal fade" tabindex="-1">
@@ -330,6 +453,22 @@ function translate_status_to_vietnamese($status) {
 <script>
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // [THÊM] Logic cho modal thêm thanh toán
+    const addPaymentModalElement = document.getElementById('addPaymentModal');
+    if (addPaymentModalElement) {
+        const addPaymentModal = new bootstrap.Modal(addPaymentModalElement);
+        document.querySelectorAll('.btn-add-payment').forEach(button => {
+            button.addEventListener('click', function() {
+                const bookingId = this.getAttribute('data-booking-id');
+                const dueAmount = this.getAttribute('data-due-amount');
+                
+                document.getElementById('payment_booking_id').value = bookingId;
+                document.getElementById('payment_amount').value = dueAmount;
+                addPaymentModal.show();
+            });
+        });
+    }
+
     // Check if booking modal element exists
     const editBookingModalElement = document.getElementById('editBookingModal');
     

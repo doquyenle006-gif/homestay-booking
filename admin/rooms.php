@@ -97,9 +97,7 @@ $sql = "
          FROM bookings b
          WHERE b.room_id = r.id
            AND b.status IN ('pending', 'confirmed')
-           AND CURDATE() >= b.checkin
-           AND CURDATE() < b.checkout
-        ) as booked_today
+        ) as booked_count
     FROM rooms r
     " . (!empty($search_keyword) ? "WHERE r.room_name LIKE ? " : "") . "
     ORDER BY r.id DESC
@@ -200,7 +198,7 @@ if (!empty($search_keyword)) {
                                     <?php
                                 // Tính toán số lượng phòng còn trống
                                 $total_quantity = (int) ($row['quantity'] ?? 1);
-                                $booked_count = (int) ($row['booked_today'] ?? 0);
+                                $booked_count = (int) ($row['booked_count'] ?? 0);
                                 $available_count = $total_quantity - $booked_count;
 
                                 $status_text = "Còn " . $available_count . " phòng";

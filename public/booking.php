@@ -14,6 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
     $room_id = (int)$_POST['room_id'];
     $checkin = $_POST['checkin'];
     $checkout = $_POST['checkout'];
+    // [THÊM] Lấy phương thức thanh toán khách hàng đã chọn
+    $payment_method = $_POST['payment_method'] ?? 'Tiền mặt';
 
     if (empty($name) || empty($phone) || empty($email) || empty($checkin) || empty($checkout)) {
         $errors[] = "Vui lòng điền đầy đủ tất cả các trường bắt buộc.";
@@ -87,16 +89,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
         }
 
         if (!empty($customer_id)) {
-            $stmt_booking = $conn->prepare("INSERT INTO bookings (customer_id, room_id, checkin, checkout, status) VALUES (?, ?, ?, ?, 'pending')");
-            $stmt_booking->bind_param("iiss", $customer_id, $room_id, $checkin, $checkout);
-            if ($stmt_booking->execute()) {
+            // [THAY ĐỔI] Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
+            $conn->begin_transaction();
+            try {
+                // 1. Tạo đơn đặt phòng
+                $stmt_booking = $conn->prepare("INSERT INTO bookings (customer_id, room_id, checkin, checkout, status) VALUES (?, ?, ?, ?, 'pending')");
+                $stmt_booking->bind_param("iiss", $customer_id, $room_id, $checkin, $checkout);
+                $stmt_booking->execute();
+                $booking_id = $conn->insert_id;
+                $stmt_booking->close();
+
+                // 2. [THÊM LẠI] Tự động tạo một bản ghi thanh toán với số tiền là 0
+                // Quản trị viên sẽ cập nhật số tiền thực tế sau khi xác nhận
+                $initial_amount = 0;
+                $notes = "Khách hàng chọn thanh toán bằng " . $payment_method;
+
+                $stmt_payment = $conn->prepare("INSERT INTO payments (booking_id, amount, payment_method, notes) VALUES (?, ?, ?, ?)");
+                $stmt_payment->bind_param("idss", $booking_id, $initial_amount, $payment_method, $notes);
+                $stmt_payment->execute();
+                $stmt_payment->close();
+
+                // Nếu mọi thứ thành công, commit transaction
+                $conn->commit();
                 $_SESSION['message'] = "Đặt phòng **THÀNH CÔNG!** Đơn hàng của bạn đang chờ xác nhận từ quản trị viên.";
-                header("Location: " . $_SERVER['PHP_SELF'] . "?room_id=" . $room_id);
+                header("Location: " . $_SERVER['PHP_SELF'] . "?room_id=" . $room_id . "&checkin=" . $checkin . "&checkout=" . $checkout);
                 exit();
-            } else {
-                $errors[] = "Lỗi hệ thống khi lưu đặt phòng: " . $conn->error;
+
+            } catch (mysqli_sql_exception $exception) {
+                $conn->rollback(); // Hoàn tác nếu có lỗi
+                $errors[] = "Lỗi hệ thống, không thể hoàn tất đặt phòng. Vui lòng thử lại. " . $exception->getMessage();
             }
-            $stmt_booking->close();
         }
     }
 
@@ -108,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
 $room_id = $_GET['room_id'] ?? '';
 $room_name = 'Phòng';
 $room_quantity = 0;
+$room_price = 0;
 $customer_name = '';
 
 // Lấy ngày từ URL nếu có (từ trang tìm kiếm)
@@ -115,11 +138,12 @@ $url_checkin = $_GET['checkin'] ?? '';
 $url_checkout = $_GET['checkout'] ?? '';
 
 if ($room_id) {
-    $stmt_room = $conn->prepare("SELECT room_name, quantity FROM rooms WHERE id = ?");
+    $stmt_room = $conn->prepare("SELECT room_name, quantity, price FROM rooms WHERE id = ?");
     $stmt_room->bind_param("i", $room_id);
     $stmt_room->execute();
     $result_room = $stmt_room->get_result();
     $room_data = $result_room->fetch_assoc();
+    $room_price = $room_data['price'] ?? 0;
     $room_name = $room_data['room_name'] ?? 'Phòng';
     $stmt_room->close();
 }
@@ -271,6 +295,28 @@ include_once(__DIR__ . '/header.php');
                     <input type="date" id="checkout_date_booking" name="checkout" class="form-control" required
                            value="<?= htmlspecialchars($_POST['checkout'] ?? $url_checkout) ?>" min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
                 </div>
+
+                <!-- [THÊM] Form thanh toán -->
+                <div class="payment-section mt-4 pt-3 border-top">
+                    <h4 class="mb-3">Thông tin thanh toán</h4>
+                    <div class="mb-3">
+                        <label for="total_cost" class="form-label">Số tiền cần thanh toán:</label>
+                        <input type="text" id="total_cost" class="form-control" readonly style="font-weight: bold; background-color: #e9ecef;">
+                    </div>
+                    <div class="mb-3">
+                        <label for="payment_method_select" class="form-label">Phương thức thanh toán:</label>
+                        <select id="payment_method_select" name="payment_method" class="form-select">
+                            <option value="Tiền mặt" selected>Thanh toán tại quầy (Tiền mặt)</option>
+                            <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+                        </select>
+                    </div>
+                    <div id="bank_info" class="alert alert-info" style="display: none;">
+                        <p class="small mb-2">Vui lòng thực hiện chuyển khoản đến thông tin tài khoản bên dưới với nội dung: <strong>[Tên của bạn] - [Số điện thoại]</strong>.</p>
+                        <strong>Ngân hàng:</strong> Vietcombank<br>
+                        <strong>Số tài khoản:</strong> 999988887777<br>
+                        <strong>Chủ tài khoản:</strong> HOMESTAY MANAGEMENT
+                    </div>
+                </div>
                 <button type="submit" name="book" class="btn btn-primary w-100">HOÀN TẤT ĐẶT PHÒNG</button>
             </form>
             <a href="index.php" class="btn btn-link mt-3">⬅ Quay lại trang chủ</a>
@@ -283,6 +329,9 @@ include_once(__DIR__ . '/footer.php');
 document.addEventListener('DOMContentLoaded', function() {
     const checkinInput = document.getElementById('checkin_date_booking');
     const checkoutInput = document.getElementById('checkout_date_booking');
+    const totalCostInput = document.getElementById('total_cost');
+    const paymentMethodSelect = document.getElementById('payment_method_select');
+    const roomPrice = <?= $room_price ?>;
 
     function updateCheckoutMinDate() {
         if (checkinInput.value) {
@@ -299,9 +348,36 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function calculateTotalCost() {
+        if (checkinInput.value && checkoutInput.value && roomPrice > 0) {
+            const checkinDate = new Date(checkinInput.value);
+            const checkoutDate = new Date(checkoutInput.value);
+            const nights = (checkoutDate - checkinDate) / (1000 * 60 * 60 * 24);
+            if (nights > 0) {
+                const total = nights * roomPrice;
+                totalCostInput.value = total.toLocaleString('vi-VN') + ' ₫';
+            }
+        }
+    }
+
+    function toggleBankInfo() {
+        const bankInfoDiv = document.getElementById('bank_info');
+        if (paymentMethodSelect.value === 'Chuyển khoản') {
+            bankInfoDiv.style.display = 'block';
+        } else {
+            bankInfoDiv.style.display = 'none';
+        }
+    }
+
     if (checkinInput && checkoutInput) {
         checkinInput.addEventListener('change', updateCheckoutMinDate);
+        checkinInput.addEventListener('change', calculateTotalCost);
+        checkoutInput.addEventListener('change', calculateTotalCost);
         updateCheckoutMinDate(); // Chạy lần đầu khi tải trang
+        calculateTotalCost(); // Chạy lần đầu khi tải trang
+
+        paymentMethodSelect.addEventListener('change', toggleBankInfo);
+        toggleBankInfo(); // Chạy lần đầu để ẩn/hiện thông tin ngân hàng
     }
 });
 </script>

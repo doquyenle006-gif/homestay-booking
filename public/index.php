@@ -536,10 +536,16 @@ include_once(__DIR__ . '/header.php');
                             alt="<?= htmlspecialchars($room['room_name']) ?>">
                         <div class="room-info">
                             <h3><?= htmlspecialchars($room['room_name']) ?></h3>
-                            <?php if (isset($room['available_quantity']) && $room['available_quantity'] < $room['quantity']): ?>
-                                <p class="available-rooms-tag">
-                                    Chỉ còn <strong><?= htmlspecialchars($room['available_quantity']) ?></strong> phòng trống
-                                </p>
+                            <?php if (isset($room['available_quantity'])): ?>
+                                <?php if ($room['available_quantity'] <= 0): ?>
+                                    <p class="available-rooms-tag" style="background-color: #f8d7da; color: #721c24;">
+                                        <strong>Hết phòng</strong>
+                                    </p>
+                                <?php elseif ($room['available_quantity'] < $room['quantity']): ?>
+                                    <p class="available-rooms-tag">
+                                        Chỉ còn <strong><?= htmlspecialchars($room['available_quantity']) ?></strong> phòng trống
+                                    </p>
+                                <?php endif; ?>
                             <?php endif; ?>
                             <p class="price"><?= number_format($room['price'], 0, ',', '.') ?> ₫ / đêm</p>
                             <div class="room-amenities">
