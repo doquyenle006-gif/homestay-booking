@@ -1,0 +1,457 @@
+/* Global reset for admin pages */
+body {
+  margin: 0;
+}
+
+/* Admin scoped CSS - keep selectors namespaced under .admin-area to avoid colliding with public styles */
+.admin-area {
+  --admin-bg: #0f1724;
+  --admin-panel-bg: #0b1220;
+  --admin-accent: #d4af37;
+  --admin-text: #e6eef8;
+  font-family: 'Poppins', sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-area .layout {
+  display: flex;
+  gap: 0;
+  align-items: flex-start; /* Align items to the top */
+  min-height: 100vh;
+}
+
+.admin-area .sidebar {
+  width: 250px;
+  background: linear-gradient(180deg, #34495e, #2c3e50); /* Tông màu xám xanh chuyên nghiệp */
+  color: var(--admin-text);
+  padding: 0 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  /* Make the sidebar sticky */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.admin-area .sidebar h4 {
+  color: var(--admin-accent);
+  margin: 0 0 16px 0;
+  padding: 16px 0;
+  padding-bottom: 20px; /* Tăng khoảng cách để đẩy đường kẻ xuống */
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15); /* Làm đường kẻ đậm hơn */
+  white-space: nowrap; /* Đảm bảo tiêu đề nằm trên một hàng */
+  font-size: 1.2rem; /* Giảm kích thước chữ của tiêu đề */
+}
+
+.admin-area .sidebar a {
+  display: block;
+  color: var(--admin-text);
+  text-decoration: none;
+  padding: 8px 6px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.admin-area .sidebar a:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.admin-area .sidebar .logout-link {
+  color: #f87171; /* Màu đỏ tươi hơn */
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  padding-top: 20px;
+  margin-top: auto; /* Đẩy nút xuống dưới cùng */
+  border-radius: 0; /* Bỏ bo góc để đường kẻ chạy hết chiều rộng */
+  font-weight: 600; /* Làm chữ đậm hơn */
+}
+
+.admin-area .sidebar .logout-link:hover {
+  background: rgba(239, 68, 68, 0.15); /* Thêm nền đỏ nhạt khi di chuột qua */
+  color: #ef4444; /* Màu đỏ đậm hơn khi di chuột qua */
+}
+
+.admin-area .main-panel {
+  flex: 1 1 auto;
+  padding: 12px 20px;
+  background: #f4f6f9; /* Light gray background for the content area */
+  height: 100vh; /* Make it full height */
+  overflow-y: auto; /* Allow vertical scrolling */
+}
+
+/* Make tables inside admin-area readable */
+.admin-area table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/*
+  General table styling for all admin pages.
+  Using more specific selectors to override Bootstrap's default styles for .table.
+*/
+.admin-area .table > :not(caption) > * > * {
+  padding: 0.6rem 0.75rem; /* Giảm padding cho gọn hơn */
+  color: #212529; /* Black text */
+  background-color: #fff; /* White background */
+  border-bottom: 1px solid #dee2e6; /* Standard gray border */
+  font-size: 0.85rem; /* Giảm kích thước chữ nhỏ hơn nữa */
+}
+
+.admin-area .table thead th {
+  font-weight: 600;
+  color: var(--admin-accent); /* Màu vàng kim giống tiêu đề sidebar */
+  background: #34495e; /* Nền xám-xanh đậm giống sidebar */
+  border-bottom-width: 2px; /* Thicker bottom border for header */
+  border-bottom-color: var(--admin-accent);
+}
+
+/* Định dạng cho ảnh trong bảng */
+.admin-area .table .table-img {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* Remove bottom border from the last row in the body */
+.admin-area .table tbody tr:last-child td { border-bottom: none; }
+/* Buttons and utilities */
+.admin-area .btn-main {
+  background: var(--admin-accent);
+  color: #111;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+
+.admin-area .btn-danger {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Modal base styles scoped */
+.admin-area .modal {
+  display: none;
+}
+
+.admin-area .modal .modal-content {
+  background: #fff; /* Nền trắng cho modal */
+  border-radius: 10px;
+  color: #212529; /* Chữ đen cho modal */
+}
+
+.admin-area .modal .modal-header {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  color: var(--admin-text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-area .modal .modal-footer {
+  border-top-color: #dee2e6;
+}
+
+.admin-area .modal .modal-footer .btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: #fff;
+}
+
+.admin-area .modal .btn-close {
+  filter: none;
+}
+
+/* Đổi màu nút close trên header của modal */
+.admin-area .modal .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Icon button used for compact actions */
+.admin-area .icon-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem; /* Đồng bộ kích thước chữ với bảng */
+  white-space: nowrap; /* Đảm bảo icon và chữ nằm trên một hàng */
+}
+
+/* Định dạng cho ảnh xem trước trong form */
+.admin-area form .img-preview {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  display: none; /* Mặc định ẩn đi */
+}
+
+.admin-area .btn-primary {
+    background-color: var(--admin-accent);
+    border-color: var(--admin-accent);
+}
+
+.admin-area .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Thêm màu và gạch chân cho nút Sửa và Xóa */
+.admin-area .icon-btn[class*="btn-edit"] {
+    color: #0ea5e9; /* Màu xanh da trời cho hành động sửa */
+}
+.admin-area .icon-btn[class*="btn-delete"] {
+    color: #dc143c; /* Màu đỏ hồng (crimson) cho hành động xóa */
+}
+
+.admin-area .icon-btn span {
+    text-decoration: underline; /* Chỉ gạch chân chữ */
+}
+
+@media (max-width:900px) {
+  .admin-area .layout {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .admin-area .sidebar {
+    width: 100%;
+    margin-bottom: 12px;
+    border-radius: 0 0 12px 12px;
+  }
+}
+
+.admin-area h2 {
+  color: var(--admin-accent);
+  text-align: center;
+  margin: 0 0 20px 0;
+  font-size: 2rem;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 15px;
+  font-weight: 600;
+}
+
+/* Card styles for list pages */
+.admin-area .card {
+  background: #ffffff; /* White background for cards containing tables */
+  border: 1px solid #e0e0e0;
+  border-radius: 14px;
+  color: #212529; /* Black text for content inside the card */
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05); /* Bóng đổ mềm mại hơn */
+}
+
+/* Style for the search card to match the sidebar. Use a more specific selector. */
+.main-panel > .card.mb-3 {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+  color: var(--admin-text);
+  border: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.main-panel > .card.mb-3 .form-control {
+  background-color: rgba(255, 255, 255, 1); /* White background for input */
+  border: 1px solid #ced4da;
+  color: #212529; /* Black text for input */
+}
+
+.main-panel > .card.mb-3 .form-control::placeholder {
+  color: #6c757d; /* Standard placeholder color */
+}
+
+.main-panel > .card.mb-3 .btn-secondary {
+    color: #212529;
+    background-color: #e9ecef;
+    border-color: #e9ecef;
+}
+
+/* Đổi màu nút tìm kiếm thành màu xanh dương */
+.main-panel > .card.mb-3 .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Bookings page styles (scoped) */
+.admin-area {
+  --color-primary: #d4af37; /* Consistent primary color */
+  --color-confirm: #27ae60;
+  --color-cancel: #e74c3c;
+  --color-pending: #f39c12;
+}
+.admin-area .status-badge {
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+/* Text colors for statuses */
+.admin-area .status-pending { color: var(--color-pending); }
+.admin-area .status-confirmed { color: var(--color-confirm); }
+.admin-area .status-cancelled { color: var(--color-cancel); }
+.admin-area .status-completed { color: #007bff; }
+
+/* Bootstrap color overrides for room status */
+.admin-area .text-success { color: #28a745 !important; }
+.admin-area .text-danger { color: #dc3545 !important; }
+
+.admin-area .btn-confirm { background: var(--color-confirm); }
+.admin-area .btn-cancel { background: var(--color-cancel); }
+
+/* ======================== */
+/* Dashboard layout & cards */
+/* ======================== */
+.admin-dashboard .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* Đẩy lời chào về bên phải */
+  gap: 16px;
+  margin-bottom: 10px; /* Giảm khoảng cách dưới lời chào */
+}
+
+.dashboard-main-header {
+  margin-bottom: 20px;
+  padding: 0; /* Bỏ padding để dịch lên */
+}
+
+.dashboard-main-header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.dashboard-main-header p {
+  color: #6c757d;
+}
+
+.admin-dashboard .greeting {
+  color: var(--admin-accent);
+  margin: 0;
+  font-weight: 600;
+}
+
+.admin-dashboard .btn-home {
+  display: inline-block;
+}
+
+.admin-dashboard .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.admin-dashboard .stat-card {
+  border-radius: 14px;
+  padding: 18px;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 110px;
+}
+
+.admin-dashboard .stat-value {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.admin-dashboard .stat-label {
+  opacity: 0.9;
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+.admin-dashboard .gradient-indigo {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+}
+
+.admin-dashboard .gradient-green {
+  background: linear-gradient(135deg, #11998e, #38ef7d);
+}
+
+.admin-dashboard .gradient-sun {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+  color: #222;
+}
+
+.admin-dashboard .gradient-blue {
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+}
+
+.admin-dashboard .content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.admin-dashboard .card.block {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 14px;
+  padding: 16px;
+  color: #212529;
+}
+
+.admin-dashboard .card-title {
+  font-weight: 600;
+  color: var(--admin-accent);
+  margin-bottom: 12px;
+}
+
+.admin-dashboard .muted {
+  color: #6c757d;
+}
+
+/* Tables */
+.admin-dashboard .table-responsive {
+  width: 100%;
+  overflow: auto;
+}
+
+.admin-dashboard .text-left {
+  text-align: left;
+}
+
+/* Sử dụng bộ chọn cụ thể hơn để ghi đè các style khác */
+.admin-dashboard .table .text-center {
+  text-align: center;
+}
+
+.admin-dashboard .table .text-right {
+  text-align: right; 
+}
+
+/* Style for card titles on dashboard */
+.admin-dashboard .card-stats .card-title,
+.admin-dashboard .card-recent .card-title {
+  color: var(--admin-accent); /* Sử dụng màu nhấn cho tiêu đề */
+}
+
+@media (max-width: 1100px) {
+  .admin-dashboard .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-dashboard .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-dashboard .stat-value {
+    font-size: 24px;
+  }
+}
